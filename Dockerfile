@@ -1,5 +1,5 @@
 # Usamos una imagen oficial de Python como base
-FROM python:3.9-slim-buster
+FROM python:3.9-slim-bullseye
 
 # Establecemos el directorio de trabajo en el contenedor
 WORKDIR /app
