@@ -1,6 +1,6 @@
 import os
 from flask import Flask, request, jsonify
-import yt_dlp
+import urllib.request # Para descargar el archivo de audio
 import speech_recognition as sr
 from pydub import AudioSegment
 from groq import Groq
@@ -9,7 +9,6 @@ from groq import Groq
 app = Flask(__name__)
 
 # Inicializamos el cliente de Groq
-# La clave se toma automáticamente de la variable de entorno GROQ_API_KEY
 try:
     groq_client = Groq()
     GROQ_API_ENABLED = True
@@ -86,31 +85,28 @@ def crear_guion_reel(analisis):
         return {"error": f"Error en la creación de guion: {e}"}
 
 
-def transcribir_video(url_video, chunk_length_ms=60000):
+def transcribir_audio_url(audio_url, chunk_length_ms=60000):
     """
-    Función principal que orquesta la descarga, transcripción y análisis.
+    Descarga el audio desde una URL directa, lo transcribe y analiza.
     """
-    opciones_descarga = {
-        'format': 'bestaudio/best',
-        'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'wav'}],
-        'outtmpl': 'audio_temp.%(ext)s',
-        'noplaylist': True,
-    }
+    audio_filename = "downloaded_audio.mp3" # O .wav, .ogg, etc.
 
-    print(f"API: Descargando audio de {url_video}...")
+    print(f"API: Descargando audio de {audio_url}...")
     try:
-        with yt_dlp.YoutubeDL(opciones_descarga) as ydl:
-            ydl.download([url_video])
-        nombre_audio = "audio_temp.wav"
-        print("API: Descarga completa.")
+        urllib.request.urlretrieve(audio_url, audio_filename)
+        print("API: Descarga de audio completa.")
     except Exception as e:
-        return {"error": f"Error al descargar el video: {e}"}
+        return {"error": f"Error al descargar el archivo de audio: {e}"}
 
-    if not os.path.exists(nombre_audio):
-        return {"error": "El archivo de audio no se encontró."}
+    if not os.path.exists(audio_filename):
+        return {"error": "El archivo de audio no se encontró después de la descarga."}
 
     print("API: Procesando y transcribiendo...")
-    audio = AudioSegment.from_wav(nombre_audio)
+    try:
+        audio = AudioSegment.from_file(audio_filename)
+    except Exception as e:
+        return {"error": f"Error al cargar el archivo de audio con pydub: {e}. Asegúrate de que el formato sea compatible (mp3, wav, etc.) y que ffmpeg esté instalado correctamente."}
+
     chunks = [audio[i:i + chunk_length_ms] for i in range(0, len(audio), chunk_length_ms)]
     recognizer = sr.Recognizer()
     texto_completo = ""
@@ -127,9 +123,11 @@ def transcribir_video(url_video, chunk_length_ms=60000):
             print(f"API: Error en fragmento {i+1}: {e}")
             texto_completo += "[fragmento no reconocido] "
         finally:
-            os.remove(chunk_filename)
+            if os.path.exists(chunk_filename):
+                os.remove(chunk_filename)
     
-    os.remove(nombre_audio)
+    if os.path.exists(audio_filename):
+        os.remove(audio_filename)
     print("API: Transcripción finalizada.")
     
     transcripcion = texto_completo.strip()
@@ -147,15 +145,15 @@ def transcribir_video(url_video, chunk_length_ms=60000):
 @app.route('/transcribe', methods=['POST'])
 def transcribe_endpoint():
     data = request.get_json()
-    if not data or 'url' not in data:
-        return jsonify({'error': 'Falta el parámetro "url" en el cuerpo de la solicitud.'}), 400
+    if not data or 'audio_url' not in data:
+        return jsonify({'error': 'Falta el parámetro "audio_url" en el cuerpo de la solicitud.'}), 400
 
-    video_url = data['url']
-    print(f"API: Solicitud recibida para procesar: {video_url}")
+    audio_url = data['audio_url']
+    print(f"API: Solicitud recibida para procesar audio de: {audio_url}")
     
-    resultado_completo = transcribir_video(video_url)
+    resultado_completo = transcribir_audio_url(audio_url)
 
-    if "error" in resultado_completo:
+    if "error" in resultado_completo and "transcripcion" not in resultado_completo: # Si hay un error y no hay transcripción parcial
         return jsonify(resultado_completo), 500
     
     return jsonify(resultado_completo)
