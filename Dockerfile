@@ -1,11 +1,19 @@
 # Usamos una imagen oficial de Python como base
-FROM python:3.9-slim
+FROM python:3.9-slim-buster
 
 # Establecemos el directorio de trabajo en el contenedor
 WORKDIR /app
 
-# Actualizamos e instalamos las dependencias del sistema para PyAudio y Python
-RUN apt-get update && apt-get install -y portaudio19-dev python3-dev pkg-config build-essential
+# Actualizamos e instalamos las dependencias del sistema
+# Incluimos build-essential (para gcc), portaudio19-dev (para PyAudio),
+# python3-dev (para cabeceras de Python), pkg-config, ffmpeg y libffi-dev
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    portaudio19-dev \
+    python3-dev \
+    pkg-config \
+    ffmpeg \
+    libffi-dev
 
 # Copiamos el archivo de requerimientos
 COPY requirements.txt .
