@@ -4,8 +4,8 @@ FROM python:3.9-slim
 # Establecemos el directorio de trabajo en el contenedor
 WORKDIR /app
 
-# Actualizamos e instalamos las dependencias del sistema para PyAudio
-RUN apt-get update && apt-get install -y portaudio19-dev
+# Actualizamos e instalamos las dependencias del sistema para PyAudio y Python
+RUN apt-get update && apt-get install -y portaudio19-dev python3-dev pkg-config
 
 # Copiamos el archivo de requerimientos
 COPY requirements.txt .
