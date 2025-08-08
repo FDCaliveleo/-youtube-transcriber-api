@@ -4,4 +4,3 @@ yt-dlp
 SpeechRecognition
 pydub
 groq
-PyAudio
