@@ -5,7 +5,7 @@ FROM python:3.9-slim-buster
 WORKDIR /app
 
 # Actualizamos e instalamos las dependencias del sistema
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential portaudio19-dev python3-dev pkg-config ffmpeg libffi-dev
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential portaudio19-dev python3-dev pkg-config ffmpeg libffi-dev && rm -rf /var/lib/apt/lists/*
 
 # Copiamos el archivo de requerimientos
 COPY requirements.txt .
